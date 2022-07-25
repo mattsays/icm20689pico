@@ -67,15 +67,6 @@ int8_t read_registers(uint8_t reg, uint8_t count, uint8_t* buffer)
     return PICO_OK;
 }
 
-icm20689* icm20689_create()
-{
-    icm20689* _icm20689 = (icm20689*) malloc(sizeof(icm20689));
-    
-
-
-    return _icm20689;
-}
-
 uint8_t icm20689_init(icm20689* icm20689) 
 {
 

@@ -43,6 +43,11 @@ const double _tempSensitivity = 333.87f;
 
 const double _defaultAccScaleFactor[3] = {1.0, 1.0, 1.0};
 
+#ifndef ICM20689_SLEEP
+#define ICM20689_SLEEP(ms) sleep_ms(ms);
+#endif
+
+
 int8_t write_register(uint8_t reg, uint8_t value)
 {
     uint8_t buff[] = {reg, value};
@@ -96,7 +101,7 @@ uint8_t icm20689_init(icm20689_t* icm20689, uint samples_num)
         icm20689->buffer[i] = 0;
     }
 
-    sleep_ms(100);
+    ICM20689_SLEEP(100);
 
     if(write_register(PWR_MGMT_1, AUTO_CLOCK_SELECT) != 0) {
         return ICM20689_I2C_ERROR;
@@ -107,7 +112,7 @@ uint8_t icm20689_init(icm20689_t* icm20689, uint samples_num)
         return ICM20689_I2C_ERROR;
     }
     
-    sleep_ms(1);
+    ICM20689_SLEEP(1);
     
     if(write_register(PWR_MGMT_1, AUTO_CLOCK_SELECT) != 0) {
         return ICM20689_I2C_ERROR;
@@ -289,7 +294,7 @@ uint8_t icm20689_calibrate_gyro(icm20689_t* icm20689, uint samples_num)
         icm20689->gyroOffsetsRaw[0] += (icm20689->gyroData[0] + icm20689->gyroOffsets[0]) / ((double)_numSamples); 
         icm20689->gyroOffsetsRaw[1] += (icm20689->gyroData[1] + icm20689->gyroOffsets[1]) / ((double)_numSamples); 
         icm20689->gyroOffsetsRaw[2] += (icm20689->gyroData[2] + icm20689->gyroOffsets[2]) / ((double)_numSamples);
-        sleep_ms(20); 
+        ICM20689_SLEEP(20); 
     }
     
     icm20689->gyroOffsets[0] = icm20689->gyroOffsetsRaw[0];
@@ -342,7 +347,7 @@ uint8_t icm20689_calibrate_acc(icm20689_t* icm20689, uint samples_num)
         icm20689->accOffsetsRaw[0] += (icm20689->accData[0]/icm20689->accScaleFactor[0] + icm20689->accOffsets[0]) / ((double)_numSamples); 
         icm20689->accOffsetsRaw[1] += (icm20689->accData[1]/icm20689->accScaleFactor[1] + icm20689->accOffsets[1]) / ((double)_numSamples); 
         icm20689->accOffsetsRaw[2] += (icm20689->accData[2]/icm20689->accScaleFactor[2] + icm20689->accOffsets[2]) / ((double)_numSamples);
-        sleep_ms(20); 
+        ICM20689_SLEEP(20); 
     }
     
     if (icm20689->accOffsetsRaw[0] > 9.0f) {

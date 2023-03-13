@@ -1,6 +1,10 @@
 #ifndef ICM20689PICO_H_
 #define ICM20689PICO_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define ICM20689_SUCCESS 0
 #define ICM20689_I2C_ERROR 1
 #define ICM20689_INVALID_ID 2
@@ -85,22 +89,26 @@ typedef struct _icm20689
 
     int16_t tempDataRaw;
     double tempData;
-} icm20689;
+} icm20689_t;
 
-uint8_t icm20689_init(icm20689* icm20689);
+uint8_t icm20689_init(icm20689_t* icm20689, uint samples_num);
 
-uint8_t icm20689_set_acc_fs(icm20689* icm20689, uint8_t fs);
-uint8_t icm20689_set_acc_dlpf(icm20689* icm20689, uint8_t dlpf);
-uint8_t icm20689_set_gyro_fs(icm20689* icm20689, uint8_t fs);
-uint8_t icm20689_set_gyro_dlpf(icm20689* icm20689, uint8_t dlpf);
+uint8_t icm20689_set_acc_fs(icm20689_t* icm20689, uint8_t fs);
+uint8_t icm20689_set_acc_dlpf(icm20689_t* icm20689, uint8_t dlpf);
+uint8_t icm20689_set_gyro_fs(icm20689_t* icm20689, uint8_t fs);
+uint8_t icm20689_set_gyro_dlpf(icm20689_t* icm20689, uint8_t dlpf);
 
-uint8_t icm20689_calibrate_gyro(icm20689* icm20689);
-uint8_t icm20689_calibrate_acc(icm20689* icm20689);
+uint8_t icm20689_calibrate_gyro(icm20689_t* icm20689, uint samples_num);
+uint8_t icm20689_calibrate_acc(icm20689_t* icm20689, uint samples_num);
 
-uint8_t icm20689_read_acc(icm20689* icm20689, double* acc);
-uint8_t icm20689_read_gyro(icm20689* icm20689, double* gyro);
-uint8_t icm20689_read_temp(icm20689* icm20689, double* temp);
-uint8_t icm20689_read_gyroacc(icm20689* icm20689, double* acc, double* gyro);
-uint8_t icm20689_power(icm20689* icm20689, bool power);
+uint8_t icm20689_read_acc(icm20689_t* icm20689, double* acc);
+uint8_t icm20689_read_gyro(icm20689_t* icm20689, double* gyro);
+uint8_t icm20689_read_temp(icm20689_t* icm20689, double* temp);
+uint8_t icm20689_read_gyroacc(icm20689_t* icm20689, double* acc, double* gyro);
+uint8_t icm20689_power(icm20689_t* icm20689, bool power);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

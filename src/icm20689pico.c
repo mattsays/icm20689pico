@@ -67,9 +67,8 @@ int8_t read_registers(uint8_t reg, uint8_t count, uint8_t* buffer)
     return PICO_OK;
 }
 
-uint8_t icm20689_init(icm20689* icm20689) 
+uint8_t icm20689_init(icm20689_t* icm20689, uint samples_num) 
 {
-
     for (size_t i = 0; i < 3; i++)
     {
         icm20689->accData[i] = 0.0;
@@ -157,19 +156,19 @@ uint8_t icm20689_init(icm20689* icm20689)
     }
 
     // Calibrate gyroscope
-    if((error = icm20689_calibrate_gyro(icm20689)) != 0) {
+    if((error = icm20689_calibrate_gyro(icm20689, samples_num)) != 0) {
         return ICM20689_GYRO_CALIBRATION_ERROR + error;
     }
 
     // Calibrate accelerometer
-    if((error = icm20689_calibrate_acc(icm20689)) != 0) {
+    if((error = icm20689_calibrate_acc(icm20689, samples_num)) != 0) {
         return ICM20689_GYRO_CALIBRATION_ERROR + error;
     }
 
     return ICM20689_SUCCESS;
 }
 
-uint8_t icm20689_set_acc_fs(icm20689* icm20689, uint8_t fs) 
+uint8_t icm20689_set_acc_fs(icm20689_t* icm20689, uint8_t fs) 
 {
 
     if(write_register(ACC_CONFIG, fs) != 0) {
@@ -203,7 +202,7 @@ uint8_t icm20689_set_acc_fs(icm20689* icm20689, uint8_t fs)
     return ICM20689_SUCCESS;
 }
 
-uint8_t icm20689_set_acc_dlpf(icm20689* icm20689, uint8_t dlpf) 
+uint8_t icm20689_set_acc_dlpf(icm20689_t* icm20689, uint8_t dlpf) 
 {
     if(write_register(ACC_CONFIG2, dlpf) != 0) {
         return ICM20689_I2C_ERROR;
@@ -214,7 +213,7 @@ uint8_t icm20689_set_acc_dlpf(icm20689* icm20689, uint8_t dlpf)
     return ICM20689_SUCCESS;
 }
 
-uint8_t icm20689_set_gyro_fs(icm20689* icm20689, uint8_t fs) 
+uint8_t icm20689_set_gyro_fs(icm20689_t* icm20689, uint8_t fs) 
 {
 
     if(write_register(GYRO_CONFIG, fs) != 0) {
@@ -248,7 +247,7 @@ uint8_t icm20689_set_gyro_fs(icm20689* icm20689, uint8_t fs)
     return ICM20689_SUCCESS;
 }
 
-uint8_t icm20689_set_gyro_dlpf(icm20689* icm20689, uint8_t dlpf) 
+uint8_t icm20689_set_gyro_dlpf(icm20689_t* icm20689, uint8_t dlpf) 
 {
     if(write_register(CONFIG, dlpf) != 0) {
         return ICM20689_I2C_ERROR;
@@ -259,7 +258,7 @@ uint8_t icm20689_set_gyro_dlpf(icm20689* icm20689, uint8_t dlpf)
     return ICM20689_SUCCESS;
 }
 
-uint8_t icm20689_calibrate_gyro(icm20689* icm20689) 
+uint8_t icm20689_calibrate_gyro(icm20689_t* icm20689, uint samples_num) 
 {
     if(write_register(CONFIG, ICM20689_GYRO_FS_250DPS) != 0) {
         return ICM20689_I2C_ERROR;
@@ -279,7 +278,12 @@ uint8_t icm20689_calibrate_gyro(icm20689* icm20689)
     icm20689->gyroOffsetsRaw[1] = 0.0;
     icm20689->gyroOffsetsRaw[2] = 0.0;
     
-    for (size_t i = 0; i < _numSamples; i++)
+    uint smpl_num = _numSamples;
+
+    if(samples_num > 0)
+        smpl_num = samples_num;
+
+    for (size_t i = 0; i < smpl_num; i++)
     {
         icm20689_read_gyro(icm20689, NULL);
         icm20689->gyroOffsetsRaw[0] += (icm20689->gyroData[0] + icm20689->gyroOffsets[0]) / ((double)_numSamples); 
@@ -307,7 +311,7 @@ uint8_t icm20689_calibrate_gyro(icm20689* icm20689)
     return ICM20689_SUCCESS; 
 }
 
-uint8_t icm20689_calibrate_acc(icm20689* icm20689) 
+uint8_t icm20689_calibrate_acc(icm20689_t* icm20689, uint samples_num) 
 {
        if(write_register(ACC_CONFIG, ICM20689_ACC_FS_2G) != 0) {
         return ICM20689_I2C_ERROR;
@@ -327,7 +331,12 @@ uint8_t icm20689_calibrate_acc(icm20689* icm20689)
     icm20689->accOffsetsRaw[1] = 0.0;
     icm20689->accOffsetsRaw[2] = 0.0;
     
-    for (size_t i = 0; i < _numSamples; i++)
+    uint smpl_num = _numSamples;
+
+    if(samples_num > 0)
+        smpl_num = samples_num;
+
+    for (size_t i = 0; i < smpl_num; i++)
     {
         icm20689_read_acc(icm20689, NULL);
         icm20689->accOffsetsRaw[0] += (icm20689->accData[0]/icm20689->accScaleFactor[0] + icm20689->accOffsets[0]) / ((double)_numSamples); 
@@ -383,7 +392,7 @@ uint8_t icm20689_calibrate_acc(icm20689* icm20689)
     return ICM20689_SUCCESS; 
 }
 
-uint8_t icm20689_read_acc(icm20689* icm20689, double* acc)
+uint8_t icm20689_read_acc(icm20689_t* icm20689, double* acc)
 {
     if(read_registers(ACC_OUT, 6, icm20689->buffer) != 0) {
         return ICM20689_I2C_ERROR;
@@ -405,7 +414,7 @@ uint8_t icm20689_read_acc(icm20689* icm20689, double* acc)
     return ICM20689_SUCCESS;
 }
 
-uint8_t icm20689_read_gyro(icm20689* icm20689, double* gyro)
+uint8_t icm20689_read_gyro(icm20689_t* icm20689, double* gyro)
 {
     if(read_registers(GYRO_OUT, 6, icm20689->buffer) != 0) {
         return ICM20689_I2C_ERROR;
@@ -428,7 +437,7 @@ uint8_t icm20689_read_gyro(icm20689* icm20689, double* gyro)
     return ICM20689_SUCCESS;
 }
 
-uint8_t icm20689_read_gyroacc(icm20689* icm20689, double* acc, double* gyro)
+uint8_t icm20689_read_gyroacc(icm20689_t* icm20689, double* acc, double* gyro)
 {
     if(read_registers(ACC_OUT, 15, icm20689->buffer) != 0) {
         return ICM20689_I2C_ERROR;
@@ -462,7 +471,7 @@ uint8_t icm20689_read_gyroacc(icm20689* icm20689, double* acc, double* gyro)
     return ICM20689_SUCCESS;
 }
 
-uint8_t icm20689_read_temp(icm20689* icm20689, double* temp)
+uint8_t icm20689_read_temp(icm20689_t* icm20689, double* temp)
 {
     if(read_registers(TEMP_OUT, 2, icm20689->buffer) != 0) {
         return ICM20689_I2C_ERROR;
@@ -476,7 +485,7 @@ uint8_t icm20689_read_temp(icm20689* icm20689, double* temp)
     return ICM20689_SUCCESS;
 }
 
-uint8_t icm20689_power(icm20689* icm20689, bool power) 
+uint8_t icm20689_power(icm20689_t* icm20689, bool power) 
 {
     return ICM20689_SUCCESS;
 }

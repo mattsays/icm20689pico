@@ -12,11 +12,12 @@
 #define I2C_SDA 0
 #define I2C_SCL 1
 
-icm20689* _icm20689;
+icm20689_t* _icm20689;
 
 int main()
 {
     stdio_init_all();
+    sleep_ms(2000); // wait for usb uart start.
 
     // I2C Initialisation. Using it at 400Khz.
     i2c_init(I2C_PORT, 400*1000);
@@ -25,15 +26,15 @@ int main()
     gpio_pull_up(I2C_SDA);
     gpio_pull_up(I2C_SCL);
 
-    _icm20689 = (icm20689*) malloc(sizeof(icm20689));
+    _icm20689 = malloc(sizeof(icm20689_t));
 
     printf("starting..\n");
     sleep_ms(5000);
 
     uint8_t error = 0;
-    error = icm20689_init(_icm20689);
+    error = icm20689_init(_icm20689, 200);
 
-    bool toggle = true;
+    bool toggle = false;
     double gyro[3] = {};
     double acc[3] = {};
     double orientation[2] = {};
@@ -51,8 +52,10 @@ int main()
             printf("Error code: %d \n" , error);
         } else {
             icm20689_read_gyroacc(_icm20689, gyro, acc);
+            icm20689_read_temp(_icm20689, &temp);
             printf("Gyroscope > X: %lf, Y: %lf, Z: %lf \n", gyro[0], gyro[1], gyro[2]);
             printf("Accelerometer > X: %lf, Y: %lf, Z: %lf \n", acc[0], acc[1], acc[2]);
+            printf("Current Temperature: %lf \n", temp);
         }
         
         sleep_ms(100);

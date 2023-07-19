@@ -22,15 +22,15 @@ target_link_libraries(icm20689pico PRIVATE pico_stdlib)
 # Add any user requested libraries
 target_link_libraries(icm20689pico PRIVATE hardware_i2c)
 
-add_executable(icm20689pico_test src/icm20689pico.c test/test.c)
+add_executable(icm20689pico_example src/icm20689pico.c example/example.c)
 
 # Add the standard library to the build
-target_link_libraries(icm20689pico_test PRIVATE pico_stdlib)
+target_link_libraries(icm20689pico_example PRIVATE pico_stdlib)
 
 # Add any user requested libraries
-target_link_libraries(icm20689pico_test PRIVATE hardware_i2c)
+target_link_libraries(icm20689pico_example PRIVATE hardware_i2c)
 
-pico_enable_stdio_usb(icm20689pico_test 1)
-pico_enable_stdio_uart(icm20689pico_test 0)
+pico_enable_stdio_usb(icm20689pico_example 1)
+pico_enable_stdio_uart(icm20689pico_example 0)
 
-pico_add_extra_outputs(icm20689pico_test)
+pico_add_extra_outputs(icm20689pico_example)

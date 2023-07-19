@@ -7,9 +7,6 @@
 
 // Check https://invensense.tdk.com/products/motion-tracking/6-axis/icm-20689/ for more infos.
 
-// I2C Address
-const uint8_t ICM20689_ADDR = 0x68;
-
 // Original chip id
 const uint8_t ID = 0x98; // 152
 
@@ -48,12 +45,12 @@ const double _defaultAccScaleFactor[3] = {1.0, 1.0, 1.0};
 #endif
 
 
-int8_t write_register(uint8_t reg, uint8_t value)
+int8_t write_register(uint8_t addr, uint8_t reg, uint8_t value)
 {
     uint8_t buff[] = {reg, value};
 
     int write;
-    write = i2c_write_blocking(i2c_default, ICM20689_ADDR, buff, 2, false);
+    write = i2c_write_blocking(ICM20689_I2C == 0 ? i2c0 : i2c1, addr, buff, 2, false);
      
     if(write == PICO_ERROR_GENERIC) {
         return PICO_ERROR_GENERIC;
@@ -61,19 +58,21 @@ int8_t write_register(uint8_t reg, uint8_t value)
     return PICO_OK;
 }
 
-int8_t read_registers(uint8_t reg, uint8_t count, uint8_t* buffer)
+int8_t read_registers(uint8_t addr, uint8_t reg, uint8_t count, uint8_t* buffer)
 {
     int read;
-    i2c_write_blocking(i2c_default, ICM20689_ADDR, &reg, 1, true);
-    read = i2c_read_blocking(i2c_default, ICM20689_ADDR, buffer, count, false);
+    i2c_write_blocking(ICM20689_I2C == 0 ? i2c0 : i2c1, addr, &reg, 1, true);
+    read = i2c_read_blocking(ICM20689_I2C == 0 ? i2c0 : i2c1, addr, buffer, count, false);
     if(read < count) {
         return PICO_ERROR_GENERIC;
     }
     return PICO_OK;
 }
 
-uint8_t icm20689_init(icm20689_t* icm20689, uint samples_num) 
+uint8_t icm20689_init(icm20689_t* icm20689, uint addr, uint samples_num) 
 {
+    icm20689->addr = addr;
+
     for (size_t i = 0; i < 3; i++)
     {
         icm20689->accData[i] = 0.0;
@@ -103,22 +102,22 @@ uint8_t icm20689_init(icm20689_t* icm20689, uint samples_num)
 
     ICM20689_SLEEP(100);
 
-    if(write_register(PWR_MGMT_1, AUTO_CLOCK_SELECT) != 0) {
+    if(write_register(icm20689->addr, PWR_MGMT_1, AUTO_CLOCK_SELECT) != 0) {
         return ICM20689_I2C_ERROR;
     }
     
 
-    if(write_register(PWR_MGMT_1, PWR_RESET) != 0) {
+    if(write_register(icm20689->addr, PWR_MGMT_1, PWR_RESET) != 0) {
         return ICM20689_I2C_ERROR;
     }
     
-    ICM20689_SLEEP(1);
+    ICM20689_SLEEP(10);
     
-    if(write_register(PWR_MGMT_1, AUTO_CLOCK_SELECT) != 0) {
+    if(write_register(icm20689->addr, PWR_MGMT_1, AUTO_CLOCK_SELECT) != 0) {
         return ICM20689_I2C_ERROR;
     }
 
-    if(read_registers(WHO_AM_I, 1, &icm20689->id) != 0) {
+    if(read_registers(icm20689->addr, WHO_AM_I, 1, &icm20689->id) != 0) {
         return ICM20689_I2C_ERROR;
     }
 
@@ -126,7 +125,7 @@ uint8_t icm20689_init(icm20689_t* icm20689, uint samples_num)
         return ICM20689_INVALID_ID;
     }
 
-    if(write_register(PWR_MGMT_2, ACC_GYRO_ON) != 0) {
+    if(write_register(icm20689->addr, PWR_MGMT_2, ACC_GYRO_ON) != 0) {
         return ICM20689_I2C_ERROR;
     }
 
@@ -156,7 +155,7 @@ uint8_t icm20689_init(icm20689_t* icm20689, uint samples_num)
 
     // Set sample rate divider
 
-    if((error = write_register(SAMPLE_RATE_DIVIDER, 0x00)) != 0) {
+    if((error = write_register(icm20689->addr, SAMPLE_RATE_DIVIDER, 0x00)) != 0) {
         return ICM20689_I2C_ERROR + error;
     }
 
@@ -176,7 +175,7 @@ uint8_t icm20689_init(icm20689_t* icm20689, uint samples_num)
 uint8_t icm20689_set_acc_fs(icm20689_t* icm20689, uint8_t fs) 
 {
 
-    if(write_register(ACC_CONFIG, fs) != 0) {
+    if(write_register(icm20689->addr, ACC_CONFIG, fs) != 0) {
         return ICM20689_I2C_ERROR;
     }
 
@@ -209,7 +208,7 @@ uint8_t icm20689_set_acc_fs(icm20689_t* icm20689, uint8_t fs)
 
 uint8_t icm20689_set_acc_dlpf(icm20689_t* icm20689, uint8_t dlpf) 
 {
-    if(write_register(ACC_CONFIG2, dlpf) != 0) {
+    if(write_register(icm20689->addr, ACC_CONFIG2, dlpf) != 0) {
         return ICM20689_I2C_ERROR;
     }
 
@@ -221,7 +220,7 @@ uint8_t icm20689_set_acc_dlpf(icm20689_t* icm20689, uint8_t dlpf)
 uint8_t icm20689_set_gyro_fs(icm20689_t* icm20689, uint8_t fs) 
 {
 
-    if(write_register(GYRO_CONFIG, fs) != 0) {
+    if(write_register(icm20689->addr, GYRO_CONFIG, fs) != 0) {
         return ICM20689_I2C_ERROR;
     }
 
@@ -254,7 +253,7 @@ uint8_t icm20689_set_gyro_fs(icm20689_t* icm20689, uint8_t fs)
 
 uint8_t icm20689_set_gyro_dlpf(icm20689_t* icm20689, uint8_t dlpf) 
 {
-    if(write_register(CONFIG, dlpf) != 0) {
+    if(write_register(icm20689->addr, CONFIG, dlpf) != 0) {
         return ICM20689_I2C_ERROR;
     }
 
@@ -265,15 +264,15 @@ uint8_t icm20689_set_gyro_dlpf(icm20689_t* icm20689, uint8_t dlpf)
 
 uint8_t icm20689_calibrate_gyro(icm20689_t* icm20689, uint samples_num) 
 {
-    if(write_register(CONFIG, ICM20689_GYRO_FS_250DPS) != 0) {
+    if(write_register(icm20689->addr, CONFIG, ICM20689_GYRO_FS_250DPS) != 0) {
         return ICM20689_I2C_ERROR;
     }
 
-    if(write_register(CONFIG, ICM20689_GYRO_DLPF_20HZ) != 0) {
+    if(write_register(icm20689->addr, CONFIG, ICM20689_GYRO_DLPF_20HZ) != 0) {
         return ICM20689_I2C_ERROR;
     }
 
-    if(write_register(SAMPLE_RATE_DIVIDER, 19) != 0) {
+    if(write_register(icm20689->addr, SAMPLE_RATE_DIVIDER, 19) != 0) {
         return ICM20689_I2C_ERROR;
     }
 
@@ -309,7 +308,7 @@ uint8_t icm20689_calibrate_gyro(icm20689_t* icm20689, uint samples_num)
         return ICM20689_GYRO_CONFIG_ERROR;
     }
     
-    if(write_register(SAMPLE_RATE_DIVIDER, 0x00) != 0) {
+    if(write_register(icm20689->addr, SAMPLE_RATE_DIVIDER, 0x00) != 0) {
         return ICM20689_I2C_ERROR;
     }
 
@@ -318,15 +317,15 @@ uint8_t icm20689_calibrate_gyro(icm20689_t* icm20689, uint samples_num)
 
 uint8_t icm20689_calibrate_acc(icm20689_t* icm20689, uint samples_num) 
 {
-       if(write_register(ACC_CONFIG, ICM20689_ACC_FS_2G) != 0) {
+       if(write_register(icm20689->addr, ACC_CONFIG, ICM20689_ACC_FS_2G) != 0) {
         return ICM20689_I2C_ERROR;
     }
 
-    if(write_register(ACC_CONFIG2, ICM20689_ACC_DLPF_21HZ) != 0) {
+    if(write_register(icm20689->addr, ACC_CONFIG2, ICM20689_ACC_DLPF_21HZ) != 0) {
         return ICM20689_I2C_ERROR;
     }
 
-    if(write_register(SAMPLE_RATE_DIVIDER, 19) != 0) {
+    if(write_register(icm20689->addr, SAMPLE_RATE_DIVIDER, 19) != 0) {
         return ICM20689_I2C_ERROR;
     }
 
@@ -390,7 +389,7 @@ uint8_t icm20689_calibrate_acc(icm20689_t* icm20689, uint samples_num)
         return ICM20689_ACC_CONFIG_ERROR;
     }
     
-    if(write_register(SAMPLE_RATE_DIVIDER, 0x00) != 0) {
+    if(write_register(icm20689->addr, SAMPLE_RATE_DIVIDER, 0x00) != 0) {
         return ICM20689_I2C_ERROR;
     }
 
@@ -399,7 +398,7 @@ uint8_t icm20689_calibrate_acc(icm20689_t* icm20689, uint samples_num)
 
 uint8_t icm20689_read_acc(icm20689_t* icm20689, double* acc)
 {
-    if(read_registers(ACC_OUT, 6, icm20689->buffer) != 0) {
+    if(read_registers(icm20689->addr, ACC_OUT, 6, icm20689->buffer) != 0) {
         return ICM20689_I2C_ERROR;
     }
 
@@ -421,7 +420,7 @@ uint8_t icm20689_read_acc(icm20689_t* icm20689, double* acc)
 
 uint8_t icm20689_read_gyro(icm20689_t* icm20689, double* gyro)
 {
-    if(read_registers(GYRO_OUT, 6, icm20689->buffer) != 0) {
+    if(read_registers(icm20689->addr, GYRO_OUT, 6, icm20689->buffer) != 0) {
         return ICM20689_I2C_ERROR;
     }
 
@@ -444,7 +443,7 @@ uint8_t icm20689_read_gyro(icm20689_t* icm20689, double* gyro)
 
 uint8_t icm20689_read_gyroacc(icm20689_t* icm20689, double* acc, double* gyro)
 {
-    if(read_registers(ACC_OUT, 15, icm20689->buffer) != 0) {
+    if(read_registers(icm20689->addr, ACC_OUT, 15, icm20689->buffer) != 0) {
         return ICM20689_I2C_ERROR;
     }
 
@@ -478,7 +477,7 @@ uint8_t icm20689_read_gyroacc(icm20689_t* icm20689, double* acc, double* gyro)
 
 uint8_t icm20689_read_temp(icm20689_t* icm20689, double* temp)
 {
-    if(read_registers(TEMP_OUT, 2, icm20689->buffer) != 0) {
+    if(read_registers(icm20689->addr, TEMP_OUT, 2, icm20689->buffer) != 0) {
         return ICM20689_I2C_ERROR;
     }
 

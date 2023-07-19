@@ -5,6 +5,10 @@
 extern "C" {
 #endif
 
+#ifndef ICM20689_I2C
+#define ICM20689_I2C 0
+#endif
+
 #define ICM20689_SUCCESS 0
 #define ICM20689_I2C_ERROR 1
 #define ICM20689_INVALID_ID 2
@@ -51,6 +55,7 @@ enum {
 
 typedef struct _icm20689
 {
+    uint8_t addr;
     uint8_t id;
 
     uint8_t buffer[15];
@@ -91,7 +96,7 @@ typedef struct _icm20689
     double tempData;
 } icm20689_t;
 
-uint8_t icm20689_init(icm20689_t* icm20689, uint samples_num);
+uint8_t icm20689_init(icm20689_t* icm20689, uint addr, uint samples_num);
 
 uint8_t icm20689_set_acc_fs(icm20689_t* icm20689, uint8_t fs);
 uint8_t icm20689_set_acc_dlpf(icm20689_t* icm20689, uint8_t dlpf);

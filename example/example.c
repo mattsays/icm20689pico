@@ -9,8 +9,8 @@
 // This example will use I2C0 on GPIO8 (SDA) and GPIO9 (SCL) running at 400KHz.
 // Pins can be changed, see the GPIO function select table in the datasheet for information on GPIO assignments
 #define I2C_PORT i2c0
-#define I2C_SDA 0
-#define I2C_SCL 1
+#define I2C_SDA 20
+#define I2C_SCL 21
 
 icm20689_t* _icm20689;
 
@@ -29,10 +29,9 @@ int main()
     _icm20689 = malloc(sizeof(icm20689_t));
 
     printf("starting..\n");
-    sleep_ms(5000);
 
     uint8_t error = 0;
-    error = icm20689_init(_icm20689, 200);
+    error |= icm20689_init(_icm20689, 0x69, 200);
 
     bool toggle = false;
     double gyro[3] = {};
@@ -40,7 +39,7 @@ int main()
     double orientation[2] = {};
     double temp;
 
-    const int led = PICO_DEFAULT_LED_PIN;
+    const int led = 0;
     gpio_init(led);
     gpio_set_dir(led, GPIO_OUT);
 
@@ -50,12 +49,13 @@ int main()
 
         if(error != 0) {
             printf("Error code: %d \n" , error);
+            toggle = true;
         } else {
-            icm20689_read_gyroacc(_icm20689, gyro, acc);
-            icm20689_read_temp(_icm20689, &temp);
-            printf("Gyroscope > X: %lf, Y: %lf, Z: %lf \n", gyro[0], gyro[1], gyro[2]);
-            printf("Accelerometer > X: %lf, Y: %lf, Z: %lf \n", acc[0], acc[1], acc[2]);
-            printf("Current Temperature: %lf \n", temp);
+            error |= icm20689_read_gyroacc(_icm20689, NULL, NULL);
+            error |= icm20689_read_temp(_icm20689, NULL);
+            printf("Gyroscope > X: %lf, Y: %lf, Z: %lf \n", _icm20689->gyroData[0], _icm20689->gyroData[1], _icm20689->gyroData[2]);
+            printf("Accelerometer > X: %lf, Y: %lf, Z: %lf \n", _icm20689->accData[0], _icm20689->accData[1], _icm20689->accData[2]);
+            printf("Current Temperature: %lf \n", _icm20689->tempData);
         }
         
         sleep_ms(100);

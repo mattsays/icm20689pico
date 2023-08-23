@@ -9,12 +9,17 @@ extern "C" {
 #define ICM20689_I2C 0
 #endif
 
+#ifndef ICM20689_SLEEP
+#define ICM20689_SLEEP(ms) sleep_ms(ms);
+#endif
+
 #define ICM20689_SUCCESS 0
 #define ICM20689_I2C_ERROR 1
-#define ICM20689_INVALID_ID 2
-#define ICM20689_ACC_CONFIG_ERROR 3
-#define ICM20689_GYRO_CONFIG_ERROR 4
-#define ICM20689_GYRO_CALIBRATION_ERROR 5
+#define ICM20689_I2C_BUSY 2
+#define ICM20689_INVALID_ID 3
+#define ICM20689_ACC_CONFIG_ERROR 4
+#define ICM20689_GYRO_CONFIG_ERROR 5
+#define ICM20689_GYRO_CALIBRATION_ERROR 6
 
 // Accelerometer full scale
 enum {
@@ -53,8 +58,11 @@ enum {
     ICM20689_GYRO_DLPF_5HZ = 0x06
 };
 
+typedef void (* icm20689_sleep_fn)(uint);
+
 typedef struct _icm20689
 {
+    icm20689_sleep_fn sleep_fn;
     uint8_t addr;
     uint8_t id;
 
@@ -95,6 +103,8 @@ typedef struct _icm20689
     int16_t tempDataRaw;
     double tempData;
 } icm20689_t;
+
+uint8_t icm20689_set_sleep_function(icm20689_t* icm20689, icm20689_sleep_fn sleep_fn);
 
 uint8_t icm20689_init(icm20689_t* icm20689, uint addr, uint samples_num);
 

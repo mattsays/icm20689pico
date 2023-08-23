@@ -18,6 +18,7 @@ const uint8_t CONFIG = 0x1A;
 const uint8_t GYRO_CONFIG = 0x1B;
 const uint8_t ACC_CONFIG = 0x1C;
 const uint8_t ACC_CONFIG2 = 0x1D;
+const uint8_t INT_ENABLE = 0x38;
 const uint8_t SAMPLE_RATE_DIVIDER = 0x19;
 const uint8_t GYRO_OUT = 0x43;
 const uint8_t ACC_OUT = 0x3B;
@@ -40,11 +41,6 @@ const double _tempSensitivity = 333.87f;
 
 const double _defaultAccScaleFactor[3] = {1.0, 1.0, 1.0};
 
-#ifndef ICM20689_SLEEP
-#define ICM20689_SLEEP(ms) sleep_ms(ms);
-#endif
-
-
 int8_t write_register(uint8_t addr, uint8_t reg, uint8_t value)
 {
     uint8_t buff[] = {reg, value};
@@ -66,6 +62,12 @@ int8_t read_registers(uint8_t addr, uint8_t reg, uint8_t count, uint8_t* buffer)
     if(read < count) {
         return PICO_ERROR_GENERIC;
     }
+    return PICO_OK;
+}
+
+uint8_t icm20689_set_sleep_function(icm20689_t* icm20689, icm20689_sleep_fn sleep_fn)
+{
+    icm20689->sleep_fn = sleep_fn;
     return PICO_OK;
 }
 
@@ -100,7 +102,7 @@ uint8_t icm20689_init(icm20689_t* icm20689, uint addr, uint samples_num)
         icm20689->buffer[i] = 0;
     }
 
-    ICM20689_SLEEP(100);
+    icm20689->sleep_fn(100);
 
     if(write_register(icm20689->addr, PWR_MGMT_1, AUTO_CLOCK_SELECT) != 0) {
         return ICM20689_I2C_ERROR;
@@ -111,7 +113,7 @@ uint8_t icm20689_init(icm20689_t* icm20689, uint addr, uint samples_num)
         return ICM20689_I2C_ERROR;
     }
     
-    ICM20689_SLEEP(10);
+    icm20689->sleep_fn(10);
     
     if(write_register(icm20689->addr, PWR_MGMT_1, AUTO_CLOCK_SELECT) != 0) {
         return ICM20689_I2C_ERROR;
@@ -159,16 +161,19 @@ uint8_t icm20689_init(icm20689_t* icm20689, uint addr, uint samples_num)
         return ICM20689_I2C_ERROR + error;
     }
 
-    // Calibrate gyroscope
-    if((error = icm20689_calibrate_gyro(icm20689, samples_num)) != 0) {
-        return ICM20689_GYRO_CALIBRATION_ERROR + error;
-    }
+    if(samples_num > 0)
+    {
+        // Calibrate gyroscope
+        if((error = icm20689_calibrate_gyro(icm20689, samples_num)) != 0) {
+            return ICM20689_GYRO_CALIBRATION_ERROR + error;
+        }
 
-    // Calibrate accelerometer
-    if((error = icm20689_calibrate_acc(icm20689, samples_num)) != 0) {
-        return ICM20689_GYRO_CALIBRATION_ERROR + error;
+        // Calibrate accelerometer
+        if((error = icm20689_calibrate_acc(icm20689, samples_num)) != 0) {
+            return ICM20689_GYRO_CALIBRATION_ERROR + error;
+        }
     }
-
+    
     return ICM20689_SUCCESS;
 }
 
@@ -177,8 +182,8 @@ uint8_t icm20689_set_acc_fs(icm20689_t* icm20689, uint8_t fs)
 
     if(write_register(icm20689->addr, ACC_CONFIG, fs) != 0) {
         return ICM20689_I2C_ERROR;
-    }
-
+    }  
+    
     double fs_value = 0.0;
 
     switch (fs)
@@ -293,7 +298,7 @@ uint8_t icm20689_calibrate_gyro(icm20689_t* icm20689, uint samples_num)
         icm20689->gyroOffsetsRaw[0] += (icm20689->gyroData[0] + icm20689->gyroOffsets[0]) / ((double)_numSamples); 
         icm20689->gyroOffsetsRaw[1] += (icm20689->gyroData[1] + icm20689->gyroOffsets[1]) / ((double)_numSamples); 
         icm20689->gyroOffsetsRaw[2] += (icm20689->gyroData[2] + icm20689->gyroOffsets[2]) / ((double)_numSamples);
-        ICM20689_SLEEP(20); 
+        icm20689->sleep_fn(20); 
     }
     
     icm20689->gyroOffsets[0] = icm20689->gyroOffsetsRaw[0];
@@ -317,7 +322,7 @@ uint8_t icm20689_calibrate_gyro(icm20689_t* icm20689, uint samples_num)
 
 uint8_t icm20689_calibrate_acc(icm20689_t* icm20689, uint samples_num) 
 {
-       if(write_register(icm20689->addr, ACC_CONFIG, ICM20689_ACC_FS_2G) != 0) {
+    if(write_register(icm20689->addr, ACC_CONFIG, ICM20689_ACC_FS_2G) != 0) {
         return ICM20689_I2C_ERROR;
     }
 
@@ -346,7 +351,7 @@ uint8_t icm20689_calibrate_acc(icm20689_t* icm20689, uint samples_num)
         icm20689->accOffsetsRaw[0] += (icm20689->accData[0]/icm20689->accScaleFactor[0] + icm20689->accOffsets[0]) / ((double)_numSamples); 
         icm20689->accOffsetsRaw[1] += (icm20689->accData[1]/icm20689->accScaleFactor[1] + icm20689->accOffsets[1]) / ((double)_numSamples); 
         icm20689->accOffsetsRaw[2] += (icm20689->accData[2]/icm20689->accScaleFactor[2] + icm20689->accOffsets[2]) / ((double)_numSamples);
-        ICM20689_SLEEP(20); 
+        icm20689->sleep_fn(20); 
     }
     
     if (icm20689->accOffsetsRaw[0] > 9.0f) {
@@ -443,7 +448,8 @@ uint8_t icm20689_read_gyro(icm20689_t* icm20689, double* gyro)
 
 uint8_t icm20689_read_gyroacc(icm20689_t* icm20689, double* acc, double* gyro)
 {
-    if(read_registers(icm20689->addr, ACC_OUT, 15, icm20689->buffer) != 0) {
+    if(read_registers(icm20689->addr, ACC_OUT, 15, icm20689->buffer) != 0) 
+    {
         return ICM20689_I2C_ERROR;
     }
 
